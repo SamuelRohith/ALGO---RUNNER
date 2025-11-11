@@ -1,104 +1,132 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
-import { GameEngine } from "@/lib/game-engine"
-import { GameRenderer } from "@/lib/game-renderer"
-import { InputController } from "@/lib/input-controller"
-import type { GameState } from "@/lib/types"
+import { useState, useEffect, useRef } from "react"
+import { GameCanvas } from "@/components/game-canvas"
+import { Player } from "@/lib/game/player"
+import { World } from "@/lib/game/world"
+import { InputHandler } from "@/lib/game/input-handler"
+import { checkPlayerObjectCollision } from "@/lib/game/collision"
+import { GAME_CONFIG } from "@/lib/config/game-config"
+import type { GameState } from "@/lib/types/game"
 
 interface GameScreenProps {
   onBackToMenu: () => void
-  stickmanColor: string
 }
 
-export default function GameScreen({ onBackToMenu, stickmanColor }: GameScreenProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
+export default function GameScreen({ onBackToMenu }: GameScreenProps) {
   const [gameState, setGameState] = useState<GameState>({
-    score: 0,
-    gameOver: false,
     isRunning: true,
+    isPaused: false,
+    score: 0,
+    coinsCollected: 0,
+    distanceTraveled: 0,
+    speedMultiplier: 1,
+    timeElapsed: 0,
   })
-  const [speed, setSpeed] = useState(1)
-  const gameEngineRef = useRef<GameEngine | null>(null)
-  const rendererRef = useRef<GameRenderer | null>(null)
-  const inputControllerRef = useRef<InputController | null>(null)
-  const animationFrameRef = useRef<number | null>(null)
+
+  const [gameSpeed, setGameSpeed] = useState(GAME_CONFIG.initialGameSpeed)
+  const [isGameOver, setIsGameOver] = useState(false)
+
+  const playerRef = useRef(new Player(50))
+  const worldRef = useRef(new World())
+  const inputRef = useRef<InputHandler | null>(null)
+  const gameLoopRef = useRef<number | null>(null)
+  const frameCountRef = useRef(0)
 
   useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const gameEngine = new GameEngine()
-    const renderer = new GameRenderer(canvas, stickmanColor)
-    const inputController = new InputController()
-
-    gameEngineRef.current = gameEngine
-    rendererRef.current = renderer
-    inputControllerRef.current = inputController
+    inputRef.current = new InputHandler()
 
     const gameLoop = () => {
-      gameEngine.update(inputController.getInput())
-
-      renderer.render(gameEngine.getGameObjects(), gameEngine.getScore(), gameEngine.getCurrentSpeed())
-
-      setGameState({
-        score: gameEngine.getScore(),
-        gameOver: gameEngine.isGameOver(),
-        isRunning: gameEngine.isRunning(),
-      })
-      setSpeed(gameEngine.getCurrentSpeed())
-
-      if (gameEngine.isGameOver() && inputController.isRestartPressed()) {
-        gameEngine.restart()
-        inputController.clearRestartFlag()
+      if (isGameOver) {
+        if (inputRef.current?.isRestartPressed()) {
+          restartGame()
+        }
+        gameLoopRef.current = requestAnimationFrame(gameLoop)
+        return
       }
 
-      animationFrameRef.current = requestAnimationFrame(gameLoop)
+      const player = playerRef.current
+      const world = worldRef.current
+      const input = inputRef.current!
+
+      if (input.isJumpPressed()) {
+        player.jump()
+      }
+
+      player.update()
+      world.update()
+
+      setGameSpeed((prev) => {
+        const newSpeed = Math.min(prev + GAME_CONFIG.speedIncrement / 60, GAME_CONFIG.maxGameSpeed)
+        return newSpeed
+      })
+
+      const collision = checkPlayerObjectCollision(player.state, world.gameObjects)
+      if (collision.type === "coin" && collision.objectId) {
+        world.collectObject(collision.objectId)
+        setGameState((prev) => ({
+          ...prev,
+          score: prev.score + 10,
+          coinsCollected: prev.coinsCollected + 1,
+        }))
+      } else if (collision.type === "bomb") {
+        setIsGameOver(true)
+      }
+
+      frameCountRef.current++
+      setGameState((prev) => ({
+        ...prev,
+        distanceTraveled: frameCountRef.current * gameSpeed,
+        timeElapsed: frameCountRef.current / 60,
+      }))
+
+      gameLoopRef.current = requestAnimationFrame(gameLoop)
     }
 
-    animationFrameRef.current = requestAnimationFrame(gameLoop)
+    gameLoopRef.current = requestAnimationFrame(gameLoop)
 
     return () => {
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current)
+      if (gameLoopRef.current) {
+        cancelAnimationFrame(gameLoopRef.current)
       }
-      inputController.destroy()
+      inputRef.current?.destroy()
     }
-  }, [stickmanColor])
+  }, [isGameOver])
+
+  const restartGame = () => {
+    playerRef.current = new Player(50)
+    worldRef.current = new World()
+    frameCountRef.current = 0
+    setGameSpeed(GAME_CONFIG.initialGameSpeed)
+    setGameState({
+      isRunning: true,
+      isPaused: false,
+      score: 0,
+      coinsCollected: 0,
+      distanceTraveled: 0,
+      speedMultiplier: 1,
+      timeElapsed: 0,
+    })
+    setIsGameOver(false)
+  }
 
   return (
-    <div
-      className="w-full max-w-4xl mx-auto p-4"
-      style={{ background: "linear-gradient(135deg, #2d1b4e 0%, #1a0f2e 100%)" }}
-    >
-      <div className="mb-6 text-center">
-        <h1 className="text-4xl font-bold text-white mb-2">Stickman Runner</h1>
-        <p className="text-lg text-purple-200">
-          {gameState.gameOver ? "Game Over! Press R to restart" : "Dodge bombs and collect coins!"}
-        </p>
-      </div>
-
-      <div
-        className="relative bg-white rounded-lg shadow-2xl overflow-hidden border-4"
-        style={{ borderColor: "#6d28d9" }}
-      >
-        <canvas ref={canvasRef} width={1000} height={600} className="w-full block" />
-      </div>
-
-      <div className="mt-6 text-center">
-        <div className="text-3xl font-bold text-white">Score: {gameState.score}</div>
-        <div className="text-2xl font-semibold text-purple-200 mt-2">Speed: {speed.toFixed(1)}x</div>
-        <div className="mt-4 text-sm text-purple-300">
-          <p>LEFT/RIGHT Arrows - Move | R - Restart</p>
-        </div>
-      </div>
-
-      <button
-        onClick={onBackToMenu}
-        className="mt-6 w-full px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-bold rounded-lg hover:from-purple-700 hover:to-purple-800 transition shadow-lg"
-      >
-        Back to Menu
-      </button>
+    <div className="w-full h-screen bg-black flex flex-col">
+      <GameCanvas
+        playerState={playerRef.current.state}
+        gameObjects={worldRef.current.gameObjects}
+        gameState={gameState}
+        gameSpeed={gameSpeed}
+        isGameOver={isGameOver}
+      />
+      {isGameOver && (
+        <button
+          onClick={onBackToMenu}
+          className="absolute top-4 left-4 px-6 py-2 bg-purple-600 text-white font-bold rounded hover:bg-purple-700"
+        >
+          Menu
+        </button>
+      )}
     </div>
   )
 }

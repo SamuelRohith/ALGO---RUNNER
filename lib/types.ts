@@ -14,6 +14,9 @@ export interface Player extends GameObject {
   isJumping: boolean
   isGrounded: boolean
   currentPlatformId: string | null // track which platform player is on
+  playerState: "running" | "jumping" | "landing" | "idle" // add state for sprite selection
+  landingCounter: number // frames to show landing pose
+  runAnimationIndex?: number // added running animation frame index
 }
 
 export interface Platform extends GameObject {

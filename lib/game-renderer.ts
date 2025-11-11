@@ -4,6 +4,18 @@ export class GameRenderer {
   private canvas: HTMLCanvasElement
   private ctx: CanvasRenderingContext2D
   private stickmanColor: string
+  private spriteCache: Record<string, HTMLImageElement | null> = {
+    idle: null,
+    runLeft: null,
+    runLeft2: null,
+    runMid: null,
+    runMid2: null,
+    runRight: null,
+    runRight2: null,
+    jumping: null,
+    landing: null,
+  }
+  private spritesLoaded = false
 
   constructor(canvas: HTMLCanvasElement, stickmanColor = "blue") {
     this.canvas = canvas
@@ -11,6 +23,39 @@ export class GameRenderer {
     const ctx = canvas.getContext("2d")
     if (!ctx) throw new Error("Could not get canvas context")
     this.ctx = ctx
+    this.preloadSprites()
+  }
+
+  private preloadSprites() {
+    const spriteUrls = {
+      idle: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/StandingSillPose-5khuXv4VelU1GcAilqEbG3QPUk8Nmd.png",
+      runLeft:
+        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/LeftRunningPose-Ktd4AptwzczmxleBgWnrm22Rp7YVtA.png",
+      runLeft2:
+        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/LeftRunningPose2-q6aXTjHUy15OnENqALgtDjvkwKqZQR.png",
+      runMid: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/RunPose2-TZ7SFpciXEsrjSHC4KZVaj66xmjX4Z.png",
+      runMid2: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Runpose21-xtFhLWf3qbtrLANRBYCLLNZB6rEOK2.png",
+      runRight:
+        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/RightRunningPose-1mu0pXw7rjj5C81W7GMV4JBfpYgMW5.png",
+      runRight2:
+        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/RightRunningPose2.png-ibeOdO1KkrJU1FwJoqidOiZjUpeFjZ.jpeg",
+      jumping: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/JumpPose-hq7v9oViyCM3xU93XuwjyeDy0eXwdw.png",
+      landing:
+        "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/AfterJumpLandingPose-AfeEcCTI9RwrNBQTeqSP3KEnF6Z3Xd.png",
+    }
+
+    Object.entries(spriteUrls).forEach(([key, url]) => {
+      const img = new Image()
+      img.crossOrigin = "anonymous"
+      img.onload = () => {
+        this.spriteCache[key] = img
+        this.spritesLoaded = Object.values(this.spriteCache).every((sprite) => sprite !== null)
+      }
+      img.onerror = () => {
+        console.log("[v0] Failed to load sprite:", key)
+      }
+      img.src = url
+    })
   }
 
   render(gameObjects: GameObject[], score: number, speed: number) {
@@ -61,6 +106,43 @@ export class GameRenderer {
   }
 
   private drawPlayer(player: Player) {
+    if (this.spritesLoaded) {
+      this.drawPlayerSprite(player)
+    } else {
+      this.drawPlayerProcedural(player)
+    }
+  }
+
+  private drawPlayerSprite(player: Player) {
+    let sprite: HTMLImageElement | null = null
+    const runningFrames = [
+      this.spriteCache.runLeft,
+      this.spriteCache.runLeft2,
+      this.spriteCache.runMid,
+      this.spriteCache.runMid2,
+    ]
+
+    switch (player.playerState) {
+      case "idle":
+        sprite = this.spriteCache.idle
+        break
+      case "running":
+        sprite = runningFrames[player.runAnimationIndex || 0]
+        break
+      case "jumping":
+        sprite = this.spriteCache.jumping
+        break
+      case "landing":
+        sprite = this.spriteCache.landing
+        break
+    }
+
+    if (sprite) {
+      this.ctx.drawImage(sprite, player.x - 15, player.y - 20, 60, 80)
+    }
+  }
+
+  private drawPlayerProcedural(player: Player) {
     const colorMap: Record<string, string> = {
       yellow: "#fbbf24",
       red: "#ef4444",
