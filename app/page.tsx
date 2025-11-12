@@ -1,67 +1,103 @@
 "use client"
 
-import { useState } from "react"
-import GameScreen from "@/components/game-screen"
-import MenuScreen from "@/components/menu-screen"
-import MarketplaceScreen from "@/components/marketplace-screen"
-
-type Screen = "menu" | "game" | "marketplace" | "options"
+import React, { useState, useEffect } from "react"
+import { peraWallet, connectToWallet, disconnectWallet } from "../src/walletConnect"
 
 export default function Home() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>("menu")
-  const [selectedStickman, setSelectedStickman] = useState<string>("yellow")
+  const [account, setAccount] = useState<string | null>(null)
 
-  const handleStartGame = () => {
-    setCurrentScreen("game")
+  useEffect(() => {
+    // Try to reconnect automatically if there's an existing session
+    peraWallet.reconnectSession().then((accounts: string[]) => {
+      if (accounts.length) {
+        console.log("Reconnected account:", accounts[0])
+        setAccount(accounts[0])
+      }
+    })
+  }, [])
+
+  // Modified connect handler — logs wallet address on connect
+  const handleConnect = async () => {
+    try {
+      const newAccounts = await connectToWallet(setAccount)
+      if (newAccounts && newAccounts.length > 0) {
+        console.log("Connected account:", newAccounts[0])
+        setAccount(newAccounts[0])
+      }
+    } catch (err) {
+      console.error("Wallet connection failed:", err)
+    }
   }
 
-  const handleBackToMenu = () => {
-    setCurrentScreen("menu")
-  }
-
-  const handleOpenMarketplace = () => {
-    setCurrentScreen("marketplace")
-  }
-
-  const handleOpenOptions = () => {
-    setCurrentScreen("options")
-  }
-
-  const handleSelectStickman = (color: string) => {
-    setSelectedStickman(color)
+  // Modified disconnect handler
+  const handleDisconnect = async () => {
+    await disconnectWallet(setAccount)
+    console.log("Wallet disconnected.")
   }
 
   return (
-    <main className="flex items-center justify-center min-h-screen bg-gradient-to-b from-sky-400 to-sky-200">
-      {currentScreen === "menu" && (
-        <MenuScreen
-          onStartGame={handleStartGame}
-          onOpenMarketplace={handleOpenMarketplace}
-          onOpenOptions={handleOpenOptions}
-        />
-      )}
-      {currentScreen === "game" && <GameScreen onBackToMenu={handleBackToMenu} stickmanColor={selectedStickman} />}
-      {currentScreen === "marketplace" && (
-        <MarketplaceScreen
-          onBackToMenu={handleBackToMenu}
-          selectedStickman={selectedStickman}
-          onSelectStickman={handleSelectStickman}
-        />
-      )}
-      {currentScreen === "options" && (
-        <div className="w-full max-w-2xl mx-auto p-8 bg-white rounded-lg shadow-2xl">
-          <h1 className="text-4xl font-bold text-center mb-8 text-slate-900">Options</h1>
-          <div className="space-y-4">
-            <p className="text-lg text-slate-700">Sound: Coming Soon</p>
-            <p className="text-lg text-slate-700">Difficulty: Coming Soon</p>
-          </div>
-          <button
-            onClick={handleBackToMenu}
-            className="mt-8 w-full px-8 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition"
+    <main
+      style={{
+        textAlign: "center",
+        marginTop: "50px",
+        fontFamily: "Arial",
+        color: "white",
+      }}
+    >
+      <h1>🚀 ALGO RUNNER</h1>
+      <p>Jump and collect coins!</p>
+
+      <div style={{ margin: "20px" }}>
+        <button style={{ margin: "10px" }}>Start Game</button>
+        <button style={{ margin: "10px" }}>Marketplace</button>
+        <button style={{ margin: "10px" }}>Options</button>
+      </div>
+
+      <hr style={{ width: "200px", margin: "20px auto" }} />
+
+      {account ? (
+        <>
+          <p>✅ Connected Wallet:</p>
+          <p
+            style={{
+              fontFamily: "monospace",
+              background: "#222",
+              padding: "10px",
+              borderRadius: "8px",
+              wordBreak: "break-all",
+              display: "inline-block",
+            }}
           >
-            Back to Menu
+            {account}
+          </p>
+          <br />
+          <button
+            onClick={handleDisconnect}
+            style={{
+              backgroundColor: "#ff5f5f",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "5px",
+              cursor: "pointer",
+              marginTop: "15px",
+            }}
+          >
+            Disconnect Wallet
           </button>
-        </div>
+        </>
+      ) : (
+        <button
+          onClick={handleConnect}
+          style={{
+            backgroundColor: "#7b61ff",
+            border: "none",
+            padding: "10px 20px",
+            borderRadius: "5px",
+            cursor: "pointer",
+          }}
+        >
+          Connect Pera Wallet
+        </button>
       )}
     </main>
   )
