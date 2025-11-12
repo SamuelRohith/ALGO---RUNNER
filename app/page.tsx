@@ -5,6 +5,7 @@ import { peraWallet, connectToWallet, disconnectWallet } from "../src/walletConn
 
 export default function Home() {
   const [account, setAccount] = useState<string | null>(null)
+  const [gameStarted, setGameStarted] = useState(false)
 
   useEffect(() => {
     // Try to reconnect automatically if there's an existing session
@@ -16,7 +17,7 @@ export default function Home() {
     })
   }, [])
 
-  // Modified connect handler — logs wallet address on connect
+  // Connect wallet handler
   const handleConnect = async () => {
     try {
       const newAccounts = await connectToWallet(setAccount)
@@ -29,10 +30,21 @@ export default function Home() {
     }
   }
 
-  // Modified disconnect handler
+  // Disconnect wallet handler
   const handleDisconnect = async () => {
     await disconnectWallet(setAccount)
     console.log("Wallet disconnected.")
+    setGameStarted(false)
+  }
+
+  // Start game logic
+  const handleStartGame = () => {
+    if (!account) {
+      alert("⚠️ Please connect your Pera Wallet first!")
+      return
+    }
+    setGameStarted(true)
+    console.log("Game started for account:", account)
   }
 
   return (
@@ -48,13 +60,31 @@ export default function Home() {
       <p>Jump and collect coins!</p>
 
       <div style={{ margin: "20px" }}>
-        <button style={{ margin: "10px" }}>Start Game</button>
+        {/* START GAME BUTTON */}
+        <button
+          onClick={handleStartGame}
+          style={{
+            margin: "10px",
+            backgroundColor: account ? "#00C853" : "#555",
+            color: "white",
+            border: "none",
+            padding: "10px 20px",
+            borderRadius: "5px",
+            cursor: account ? "pointer" : "not-allowed",
+          }}
+          disabled={!account}
+        >
+          Start Game
+        </button>
+
+        {/* OTHER BUTTONS */}
         <button style={{ margin: "10px" }}>Marketplace</button>
         <button style={{ margin: "10px" }}>Options</button>
       </div>
 
       <hr style={{ width: "200px", margin: "20px auto" }} />
 
+      {/* WALLET CONNECTION LOGIC */}
       {account ? (
         <>
           <p>✅ Connected Wallet:</p>
@@ -98,6 +128,21 @@ export default function Home() {
         >
           Connect Pera Wallet
         </button>
+      )}
+
+      {/* GAME AREA */}
+      {gameStarted && (
+        <div
+          style={{
+            marginTop: "30px",
+            backgroundColor: "#111",
+            padding: "20px",
+            borderRadius: "10px",
+          }}
+        >
+          <h2>🎮 Game Running...</h2>
+          <p>Good luck, runner!</p>
+        </div>
       )}
     </main>
   )
