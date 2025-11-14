@@ -16,6 +16,7 @@ export class GameEngine {
   private maxSpeed = 8
   private gravity = 0.6
   private jumpPower = -15
+  private runningAnimationFrame = 0 // added running animation frame counter
 
   constructor(config: Partial<GameConfig> = {}) {
     this.config = { ...DEFAULT_GAME_CONFIG, ...config }
@@ -34,6 +35,9 @@ export class GameEngine {
       isJumping: false,
       isGrounded: true,
       currentPlatformId: null,
+      playerState: "idle",
+      landingCounter: 0,
+      runAnimationIndex: 0, // added running animation index
     }
   }
 
@@ -78,6 +82,16 @@ export class GameEngine {
 
     this.updatePlayer(input)
 
+    if (this.player.playerState === "running") {
+      this.runningAnimationFrame++
+      if (this.runningAnimationFrame % 8 === 0) {
+        this.player.runAnimationIndex = (this.player.runAnimationIndex + 1) % 4
+      }
+    } else {
+      this.runningAnimationFrame = 0
+      this.player.runAnimationIndex = 0
+    }
+
     this.updateCoins()
 
     this.updateObstacles()
@@ -98,10 +112,18 @@ export class GameEngine {
   }
 
   private updatePlayer(input: InputState) {
+    if (this.player.landingCounter > 0) {
+      this.player.landingCounter--
+      if (this.player.landingCounter === 0) {
+        this.player.playerState = "running"
+      }
+    }
+
     if (input.jump && this.player.isGrounded) {
       this.player.velocityY = this.jumpPower
       this.player.isGrounded = false
       this.player.isJumping = true
+      this.player.playerState = "jumping"
     }
 
     // Apply gravity
@@ -114,6 +136,10 @@ export class GameEngine {
       this.player.velocityY = 0
       this.player.isGrounded = true
       this.player.isJumping = false
+      if (this.player.playerState === "jumping") {
+        this.player.playerState = "landing"
+        this.player.landingCounter = 5
+      }
     }
   }
 
@@ -188,5 +214,7 @@ export class GameEngine {
     this.coinSpawnCounter = 0
     this.obstacleSpawnCounter = 0
     this.currentSpeed = 3
+    this.player.landingCounter = 0
+    this.runningAnimationFrame = 0 // reset running animation frame counter
   }
 }

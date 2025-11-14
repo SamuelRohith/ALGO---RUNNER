@@ -81,56 +81,42 @@ export default function Home() {
           </button>
         )}
 
-        <button style={{ margin: "10px" }}>Marketplace</button>
-        <button style={{ margin: "10px" }}>Options</button>
-      </div>
-
-      <hr style={{ width: "200px", margin: "20px auto" }} />
-
-      {/* ✅ WALLET CONNECT / DISCONNECT */}
-      {account ? (
-        <>
-          <p>✅ Connected Wallet:</p>
-          <p
-            style={{
-              fontFamily: "monospace",
-              background: "#222",
-              padding: "10px",
-              borderRadius: "8px",
-              wordBreak: "break-all",
-              display: "inline-block",
-            }}
-          >
-            {account}
-          </p>
-          <br />
-          <button
-            onClick={handleDisconnect}
-            style={{
-              backgroundColor: "#ff5f5f",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "5px",
-              cursor: "pointer",
-              marginTop: "15px",
-            }}
-          >
-            Disconnect Wallet
-          </button>
-        </>
-      ) : (
-        <button
-          onClick={handleConnect}
-          style={{
-            backgroundColor: "#7b61ff",
-            border: "none",
-            padding: "10px 20px",
-            borderRadius: "5px",
-            cursor: "pointer",
-          }}
+  return (
+    <main className="w-full min-h-screen">
+      {currentScreen === "menu" && (
+        <MenuScreen
+          onStartGame={handleStartGame}
+          onOpenMarketplace={handleOpenMarketplace}
+          onOpenOptions={handleOpenOptions}
+        />
+      )}
+      {currentScreen === "game" && <GameScreen onBackToMenu={handleBackToMenu} />}
+      {currentScreen === "marketplace" && (
+        <MarketplaceScreen
+          onBackToMenu={handleBackToMenu}
+          selectedStickman={selectedStickman}
+          onSelectStickman={handleSelectStickman}
+        />
+      )}
+      {currentScreen === "options" && (
+        <div
+          className="w-full min-h-screen flex items-center justify-center"
+          style={{ background: "linear-gradient(135deg, #2d1b4e 0%, #1a0f2e 100%)" }}
         >
-          Connect Pera Wallet
-        </button>
+          <div className="w-full max-w-2xl mx-auto p-8 bg-purple-900 rounded-lg shadow-2xl">
+            <h1 className="text-4xl font-bold text-center mb-8 text-white">Options</h1>
+            <div className="space-y-4">
+              <p className="text-lg text-purple-100">Sound: Coming Soon</p>
+              <p className="text-lg text-purple-100">Difficulty: Coming Soon</p>
+            </div>
+            <button
+              onClick={handleBackToMenu}
+              className="mt-8 w-full px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-bold rounded-lg hover:from-purple-700 hover:to-purple-800 transition"
+            >
+              Back to Menu
+            </button>
+          </div>
+        </div>
       )}
     </main>
   )
